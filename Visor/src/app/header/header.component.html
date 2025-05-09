@@ -1,0 +1,13 @@
+<header class="app-header secondary">
+  <div class="left-section">
+    Ejecutando podman en modo <strong>{{ modo }}</strong>
+  </div>
+  <div class="right-section">
+    Mostrar todas las capacidades
+    <mat-slide-toggle
+          class="toggle"
+          [checked]="mostrarCapacidades"
+          (change)="onToggleChange($event)">
+      </mat-slide-toggle>
+  </div>
+</header>

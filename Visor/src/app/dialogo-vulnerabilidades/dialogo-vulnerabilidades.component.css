@@ -1,0 +1,30 @@
+.dialog-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+.tabla-contenedor {
+    flex-grow: 1;
+    height: calc(100% - 30px);
+    overflow-y: auto;
+}
+
+.link {
+    cursor: pointer;
+    color: #08cce0;
+    text-decoration: underline;
+}
+
+.amarillo {
+    color: yellow;
+}
+
+.naranja {
+    color: orange;
+}
+
+.rojo {
+    color: red;
+}
+  

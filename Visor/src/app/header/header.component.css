@@ -1,0 +1,33 @@
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    color: #fff;
+}
+
+.secondary {
+    background-color: #222831;
+}
+
+.left-section {
+    font-size: 1rem;
+    font-weight: normal;
+}
+
+.app-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-right: 20px;
+    cursor: pointer;
+}
+
+.right-section {
+    font-size: 1rem;
+    font-weight: normal;
+}
+
+.toggle {
+    margin-right: 10px;
+    margin-left: 10px;
+}
