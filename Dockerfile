@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -7,7 +7,11 @@ COPY Server/ /app/Server/
 
 RUN chmod +x /app/Scripts/entrypoint.sh
 
-RUN apt-get update && apt-get install -y wget curl gnupg lsb-release podman postgresql postgresql-contrib python3 python3-psycopg2 npm && apt-get clean
+RUN apt-get update && apt-get install -y --no-install-recommends wget curl gnupg lsb-release podman  npm postgresql postgresql-contrib python3-venv && apt-get clean
+
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install scikit-learn psycopg2-binary
 
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
 

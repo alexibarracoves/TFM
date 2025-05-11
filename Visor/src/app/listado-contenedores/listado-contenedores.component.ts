@@ -115,7 +115,7 @@ export class ListadoContenedoresComponent implements OnDestroy {
     this.dialog.open(DialogoLogsComponent, {
       maxWidth: '100vw',
       maxHeight: '100vh',
-      height: '65vh',
+      height: 'auto',
       width: '80%',
       data: { nombreContenedor }
     });

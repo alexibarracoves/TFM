@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('./db');
 const cors = require('cors');
+const { execFile } = require('child_process');
 const app = express();
 const PORT = 3000;
 
@@ -104,6 +105,23 @@ app.get('/imagenes/:id', async (req, res) => {
   }
 });
 
+app.get('/contenedores/:nombre/logs/resumen', async (req, res) => {
+  const { nombre } = req.params;
+
+  const numLineas = 1000;
+
+  execFile('python3', ['../Scripts/analisis_logs.py', nombre, numLineas], { cwd: __dirname }, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Error ejecutando el script de análisis:', error);
+      return res.status(500).json({ resumen: 'Error al analizar los logs.' });
+    }
+    if (stderr) {
+      console.error('Stderr del script:', stderr);
+    }
+
+    res.json({ resumen: stdout.trim() });
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en puerto ${PORT}`);
