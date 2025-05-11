@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const pool = require('./db');
 const cors = require('cors');
 const { execFile } = require('child_process');
@@ -7,6 +8,8 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/contenedores', async (req, res) => {
   try {
@@ -121,6 +124,10 @@ app.get('/contenedores/:nombre/logs/resumen', async (req, res) => {
 
     res.json({ resumen: stdout.trim() });
   });
+});
+
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {

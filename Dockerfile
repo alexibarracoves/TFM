@@ -1,9 +1,18 @@
+FROM node:18-alpine AS angular-builder
+
+WORKDIR /visor
+COPY Visor/ ./
+RUN npm ci && npm run build -- --configuration production
+
 FROM python:3.10-slim
 
 WORKDIR /app
 
 COPY Scripts/ /app/Scripts/
 COPY Server/ /app/Server/
+
+RUN mkdir -p /app/Server/public
+COPY --from=angular-builder /visor/dist/visor/browser /app/Server/public
 
 RUN chmod +x /app/Scripts/entrypoint.sh
 
