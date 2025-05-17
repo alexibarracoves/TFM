@@ -111,7 +111,7 @@ app.get('/imagenes/:id', async (req, res) => {
 app.get('/contenedores/:nombre/logs/resumen', async (req, res) => {
   const { nombre } = req.params;
 
-  const numLineas = 1000;
+  const numLineas = 10000;
 
   execFile('python3', ['../Scripts/analisis_logs.py', nombre, numLineas], { cwd: __dirname }, (error, stdout, stderr) => {
     if (error) {

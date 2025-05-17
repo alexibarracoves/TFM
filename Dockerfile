@@ -16,11 +16,11 @@ COPY --from=angular-builder /visor/dist/visor/browser /app/Server/public
 
 RUN chmod +x /app/Scripts/entrypoint.sh
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget curl gnupg lsb-release podman  npm postgresql postgresql-contrib python3-venv && apt-get clean
+RUN apt-get update && apt-get install -y --no-install-recommends wget curl gnupg lsb-release podman npm postgresql postgresql-contrib python3-venv && apt-get clean
 
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install scikit-learn psycopg2-binary
+RUN pip install scikit-learn psycopg2-binary python-dateutil
 
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
 
