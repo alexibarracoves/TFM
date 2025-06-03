@@ -103,10 +103,10 @@ export class ListadoContenedoresComponent implements OnDestroy {
 
   abrirDialogo(idImagen: number, imagen: string): void {
     this.dialog.open(DialogoVulnerabilidadesComponent, {
+      width: '80%',
+      height: 'auto',
       maxWidth: '100vw',
       maxHeight: '100vh',
-      height: '65vh',
-      width: '80%',
       data: { idImagen, imagen }
     });
   }

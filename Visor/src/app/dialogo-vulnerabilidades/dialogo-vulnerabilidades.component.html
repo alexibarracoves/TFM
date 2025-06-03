@@ -1,55 +1,53 @@
-<div mat-dialog-content class="dialog-content">
-    <h2 mat-dialog-title class="text-color">Vulnerabilidades de: {{ data.imagen }}</h2>
+<mat-dialog-content class="dialog-content">
+  <h2 mat-dialog-title class="text-color">Vulnerabilidades de: {{ data.imagen }}</h2>
+    <h3 class="text-color subtitulo">Total: {{imagen.numero_desconocida + imagen.numero_baja + imagen.numero_media + imagen.numero_alta + imagen.numero_critica}} (Desconocida: {{imagen.numero_desconocida}}, Baja: {{imagen.numero_baja}}, Media: {{imagen.numero_media}}, Alta: {{imagen.numero_alta}}, Crítica: {{imagen.numero_critica}})</h3>
+    <table mat-table [dataSource]="dataSource">
 
-    <h3 mat-dialog-title class="text-color">Total: {{imagen.numero_desconocida + imagen.numero_baja + imagen.numero_media + imagen.numero_alta + imagen.numero_critica}} (Desconocida: {{imagen.numero_desconocida}}, Baja: {{imagen.numero_baja}}, Media: {{imagen.numero_media}}, Alta: {{imagen.numero_alta}}, Crítica: {{imagen.numero_critica}})</h3>
-    <div class="tabla-contenedor">
-      <table mat-table [dataSource]="dataSource" class="mat-elevation-z8">
+      <ng-container matColumnDef="vulnerabilidad">
+        <th mat-header-cell *matHeaderCellDef> Vulnerabilidad </th>
+        <td mat-cell *matCellDef="let element"> {{ element.vulnerabilidad }} </td>
+      </ng-container>
 
-        <ng-container matColumnDef="vulnerabilidad">
-          <th mat-header-cell *matHeaderCellDef> Vulnerabilidad </th>
-          <td mat-cell *matCellDef="let element"> {{ element.vulnerabilidad }} </td>
-        </ng-container>
-  
-        <ng-container matColumnDef="libreria">
-          <th mat-header-cell *matHeaderCellDef> Librería </th>
-          <td mat-cell *matCellDef="let element"> {{ element.libreria }} </td>
-        </ng-container>
-  
-        <ng-container matColumnDef="severidad">
-          <th mat-header-cell *matHeaderCellDef> Severidad </th>
-          <td mat-cell *matCellDef="let element" [ngClass]="estiloSeveridad(element.severidad)">
-            {{ element.severidad }}
-          </td>
-        </ng-container>
-  
-        <ng-container matColumnDef="estado">
-          <th mat-header-cell *matHeaderCellDef> Estado </th>
-          <td mat-cell *matCellDef="let element"> {{ element.estado }} </td>
-        </ng-container>
-  
-        <ng-container matColumnDef="version">
-          <th mat-header-cell *matHeaderCellDef> Versión </th>
-          <td mat-cell *matCellDef="let element"> {{ element.version }} </td>
-        </ng-container>
+      <ng-container matColumnDef="libreria">
+        <th mat-header-cell *matHeaderCellDef> Librería </th>
+        <td mat-cell *matCellDef="let element"> {{ element.libreria }} </td>
+      </ng-container>
 
-        <ng-container matColumnDef="informacion">
-          <th mat-header-cell *matHeaderCellDef> Información </th>
-          <td mat-cell *matCellDef="let element">
-            <span *ngIf="element.informacion">{{ element.informacion }}. </span>
-            <a [href]="element.enlace" target="_blank" class="link">{{ element.enlace }}</a>
-          </td>
-        </ng-container>
-  
-        <tr mat-header-row *matHeaderRowDef="columnasListado"></tr>
-        <tr mat-row *matRowDef="let row; columns: columnasListado;"></tr>
-      </table>
-    </div>
+      <ng-container matColumnDef="severidad">
+        <th mat-header-cell *matHeaderCellDef> Severidad </th>
+        <td mat-cell *matCellDef="let element" [ngClass]="estiloSeveridad(element.severidad)">
+          {{ element.severidad }}
+        </td>
+      </ng-container>
 
-    <mat-paginator
-      [length]="totalItems"
-      [pageSize]="pageSize"
-      [showFirstLastButtons]="true"
-      (page)="onPaginateChange($event)">
-    </mat-paginator>
-  </div>
-  
+      <ng-container matColumnDef="estado">
+        <th mat-header-cell *matHeaderCellDef> Estado </th>
+        <td mat-cell *matCellDef="let element"> {{ element.estado }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="version">
+        <th mat-header-cell *matHeaderCellDef> Versión </th>
+        <td mat-cell *matCellDef="let element"> {{ element.version }} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="informacion">
+        <th mat-header-cell *matHeaderCellDef> Información </th>
+        <td mat-cell *matCellDef="let element">
+          <span *ngIf="element.informacion">{{ element.informacion }}. </span>
+          <a [href]="element.enlace" target="_blank" class="link">{{ element.enlace }}</a>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columnasListado"></tr>
+      <tr mat-row *matRowDef="let row; columns: columnasListado;"></tr>
+    </table>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <mat-paginator
+    [length]="totalItems"
+    [pageSize]="pageSize"
+    [showFirstLastButtons]="true"
+    (page)="onPaginateChange($event)">
+  </mat-paginator>
+</mat-dialog-actions>

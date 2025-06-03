@@ -1,5 +1,5 @@
 import { Component, Inject } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogContent, MatDialogTitle } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule, MatDialogContent, MatDialogTitle } from '@angular/material/dialog';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
@@ -34,7 +34,8 @@ interface Imagen {
     CommonModule,
     MatDialogContent,
     MatDialogTitle,
-    MatPaginator
+    MatPaginator,
+    MatDialogModule
   ],
   templateUrl: './dialogo-vulnerabilidades.component.html',
   styleUrl: './dialogo-vulnerabilidades.component.css'
@@ -52,7 +53,7 @@ export class DialogoVulnerabilidadesComponent {
     numero_alta: 0,
     numero_critica: 0
   };
-  pageSize = 10;
+  pageSize = 5;
   totalPages = 0;
   totalItems = 0;
   currentPage = 0;
