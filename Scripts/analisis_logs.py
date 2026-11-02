@@ -55,6 +55,8 @@ def analizar_logs_puro(nombre_contenedor, num_lineas, contamination=0.05):
         if len(parts) < 4:
             continue
         ts_str, _, level, msg = parts
+        # Podman devuelve RFC3339Nano (p.ej. ...17.788436412Z), que fromisoformat no admite en Python 3.10
+        ts_str = re.sub(r'(\.\d{6})\d+', r'\1', ts_str).replace('Z', '+00:00')
         try:
             ts = datetime.fromisoformat(ts_str)
         except ValueError:
