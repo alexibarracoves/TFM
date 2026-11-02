@@ -70,7 +70,7 @@ export class DialogoVulnerabilidadesComponent {
   }
 
   loadVulnerabilidades(page: number, size: number) {
-    this.http.get<any>(`http://localhost:3000/vulnerabilidades/${this.data.idImagen}?page=${page}&size=${size}`).subscribe(res => {
+    this.http.get<any>(`/vulnerabilidades/${this.data.idImagen}?page=${page}&size=${size}`).subscribe(res => {
       this.dataSource.data = res.data;
       this.totalPages = res.totalPages;
       this.totalItems = res.totalItems;
@@ -78,7 +78,7 @@ export class DialogoVulnerabilidadesComponent {
   }
 
   loadImagen(){
-    this.http.get<any>(`http://localhost:3000/imagenes/${this.data.idImagen}`).subscribe(res => {
+    this.http.get<any>(`/imagenes/${this.data.idImagen}`).subscribe(res => {
       this.imagen = res;
     });
   }

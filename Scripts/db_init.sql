@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
     enlace TEXT
 );
 
-CREATE TABLE IF NOT EXISTS podman (
+CREATE TABLE IF NOT EXISTS motor (
     id SERIAL PRIMARY KEY,
+    nombre TEXT NOT NULL,
     modo_root BOOLEAN NOT NULL
 );

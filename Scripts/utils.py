@@ -1,6 +1,6 @@
 import psycopg2
-import subprocess
-import json
+import docker
+import motor
 
 DB_CONFIG = {
     "dbname": "contenedores",
@@ -15,19 +15,16 @@ def get_db():
 
 def getContenedores():
     try:
-        resultado = subprocess.run(["podman", "ps", "--format", "json"], capture_output=True, text=True, check=True)
-        return json.loads(resultado.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Error ejecutando podman ps: {e}")
+        return motor.listarContenedores()
+    except docker.errors.DockerException as e:
+        print(f"Error listando los contenedores: {e}")
         return []
-    
+
 def getImagenes(contenedores):
     imagenes = {}
     for contenedor in contenedores:
         imagen = contenedor["Image"]
         hash = contenedor["ImageID"]
-        if "localhost" in imagen:
-            continue
         if imagen not in imagenes:
             imagenes[imagen] = hash
     return imagenes

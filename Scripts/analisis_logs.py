@@ -1,6 +1,6 @@
 import re
-import subprocess
 import sys
+import motor
 from datetime import datetime, timedelta
 from collections import Counter, namedtuple
 from statistics import mean, pstdev
@@ -41,8 +41,7 @@ def detect_activity_spikes(timestamps, window_seconds=30, threshold_factor=1.0):
 
 def analizar_logs_puro(nombre_contenedor, num_lineas, contamination=0.05):
     # 1) Obtener raw logs
-    cmd = ['podman', 'logs', '--timestamps', '--tail', str(num_lineas), nombre_contenedor]
-    raw = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.splitlines()
+    raw = motor.logs(nombre_contenedor, num_lineas)
     if not raw:
         return f"No se obtuvieron logs para '{nombre_contenedor}'."
 

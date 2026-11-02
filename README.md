@@ -6,9 +6,9 @@ Herramienta autocontenida que se ejecuta como un contenedor más y analiza los c
 - **Vulnerabilidades de las imágenes**: escaneo con [Trivy](https://trivy.dev) de cada imagen en uso, con el recuento por severidad y el detalle de cada CVE.
 - **Análisis de logs**: rango temporal, recuento por nivel, detección de anomalías (TF-IDF + Isolation Forest) y detección de picos de actividad.
 
-Proyecto desarrollado como Trabajo Fin de Máster.
+Funciona con **Docker** y con **Podman** (rootful o rootless).
 
-> **Estado:** actualmente solo es compatible con **Podman**. El soporte para Docker y otras mejoras están en la [hoja de ruta](#hoja-de-ruta).
+Proyecto desarrollado como Trabajo Fin de Máster.
 
 ## Arquitectura
 
@@ -16,32 +16,44 @@ Todo se ejecuta dentro de un único contenedor:
 
 | Componente | Ruta | Función |
 |---|---|---|
-| Recolector | `Scripts/analisis_contenedores.py` | Cada 5 s consulta `podman ps` / `podman inspect` y guarda el estado en la base de datos. |
+| Motor | `Scripts/motor.py` | Acceso al motor de contenedores mediante la API compatible con Docker (y la API nativa de Podman cuando hace falta). |
+| Recolector | `Scripts/analisis_contenedores.py` | Cada 5 s lista e inspecciona los contenedores en ejecución y guarda el estado en la base de datos. |
 | Escáner de imágenes | `Scripts/analisis_imagenes.py` | Lanza Trivy cuando aparece una imagen nueva y, además, cada ~10 minutos. |
-| Analizador de logs | `Scripts/analisis_logs.py` | Se ejecuta bajo demanda desde la API sobre `podman logs`. |
-| Base de datos | `Scripts/db_init.sql` | PostgreSQL local con las tablas `imagenes`, `contenedores`, `vulnerabilidades` y `podman`. |
+| Analizador de logs | `Scripts/analisis_logs.py` | Se ejecuta bajo demanda desde la API sobre los logs del contenedor. |
+| Base de datos | `Scripts/db_init.sql` | PostgreSQL local con las tablas `imagenes`, `contenedores`, `vulnerabilidades` y `motor`. |
 | API | `Server/` | Express (Node.js) en el puerto 3000; también sirve el frontend. |
 | Visor | `Visor/` | Frontend en Angular + Angular Material. |
 | Generador de logs | `Generador-logs/` | Contenedor de prueba que emite logs aleatorios con ráfagas para probar el análisis. |
 
-El contenedor se comunica con el motor a través del socket de Podman montado en `/run/podman/podman.sock`.
+El contenedor se comunica con el motor a través de su socket, que hay que montar dentro. Al arrancar busca `/var/run/docker.sock` y después `/run/podman/podman.sock`; también se puede indicar otro con la variable `DOCKER_HOST`. Trivy usa ese mismo socket, así que también analiza imágenes construidas en local.
 
 ## Puesta en marcha
 
-### Requisitos
+> **Aviso de seguridad:** montar el socket del motor de contenedores da a este contenedor control total sobre el resto de contenedores (y, en modo *rootful*, sobre la máquina). La API no tiene autenticación: no publiques el puerto 3000 en redes no confiables.
 
-- Podman con el servicio de API activo (`podman system service`) o el socket `podman.socket` de systemd.
-- Acceso a Internet en el primer arranque (Trivy descarga su base de datos de vulnerabilidades).
+Se necesita acceso a Internet en el primer arranque, porque Trivy descarga su base de datos de vulnerabilidades.
 
 ### Construir la imagen
 
 ```bash
-podman build -t analizador-contenedores .
+docker build -t analizador-contenedores .
 ```
 
-### Ejecutar
+(o `podman build` con los mismos argumentos)
 
-Modo *rootful* (socket del sistema):
+### Docker
+
+Linux, y también Docker Desktop en Windows y macOS:
+
+```bash
+docker run -d --name analizador -p 3000:3000 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  analizador-contenedores
+```
+
+> En Git Bash (Windows), antepón `MSYS_NO_PATHCONV=1` para que no reescriba la ruta del socket.
+
+### Podman *rootful*
 
 ```bash
 sudo systemctl enable --now podman.socket
@@ -50,7 +62,7 @@ sudo podman run -d --name analizador -p 3000:3000 \
   analizador-contenedores
 ```
 
-Modo *rootless* (socket del usuario):
+### Podman *rootless*
 
 ```bash
 systemctl --user enable --now podman.socket
@@ -61,29 +73,19 @@ podman run -d --name analizador -p 3000:3000 \
 
 Abre <http://localhost:3000>.
 
-> **Aviso de seguridad:** montar el socket del motor de contenedores da a este contenedor control total sobre el resto de contenedores (y, en modo *rootful*, sobre la máquina). La API no tiene autenticación: no publiques el puerto 3000 en redes no confiables.
-
 ### Contenedor de prueba
 
 ```bash
-podman build -t localhost/generador-logs Generador-logs
-podman run -d --name generador-logs localhost/generador-logs
+docker build -t generador-logs Generador-logs
+docker run -d --name generador-logs generador-logs
 ```
 
 Pulsa **Analizar** en la fila de `generador-logs` para ver el resumen de logs.
 
-### Probarlo con Docker Desktop (Windows / macOS)
+### Limitaciones conocidas
 
-Mientras no haya soporte nativo para Docker, puedes levantar un Podman dentro de un contenedor y conectar el analizador a su socket. El analizador solo verá los contenedores que se ejecuten dentro de ese Podman, no los de Docker.
-
-```bash
-docker build -t analizador-contenedores .
-docker volume create podman-sock
-docker run -d --name podman-host --privileged -v podman-sock:/run/podman \
-  quay.io/podman/stable:v5.4.2 podman system service --time=0 unix:///run/podman/podman.sock
-docker exec podman-host podman run -d --name web docker.io/library/nginx:1.27
-docker run -d --name analizador -p 3000:3000 -v podman-sock:/run/podman analizador-contenedores
-```
+- Con Docker, las capacidades efectivas se calculan a partir de las capacidades por defecto del motor y de `CapAdd`/`CapDrop`/`--privileged`. Con Podman se leen directamente de su API.
+- Trivy no analiza algunas distribuciones, como Fedora. En esas imágenes el recuento de vulnerabilidades sale vacío.
 
 ## API
 
@@ -104,6 +106,8 @@ npm ci
 npm start        # http://localhost:4200
 ```
 
+El frontend redirige la API a `http://localhost:3000` mediante `proxy.conf.json`.
+
 API (requiere PostgreSQL con el esquema de `Scripts/db_init.sql`):
 
 ```bash
@@ -114,8 +118,8 @@ node index.js
 
 ## Hoja de ruta
 
-- [ ] Soporte para Docker y Podman a través de la API compatible con Docker.
-- [ ] URLs relativas en el frontend (ahora apunta a `localhost:3000`).
+- [x] Soporte para Docker y Podman a través de la API compatible con Docker.
+- [x] URLs relativas en el frontend.
 - [ ] Imagen más ligera: SQLite en lugar de PostgreSQL, versiones de Python y Node con soporte, Trivy con versión fija y caché persistente, usuario sin privilegios.
 - [ ] Endurecimiento: escuchar en `127.0.0.1` por defecto, token de acceso opcional, CORS restringido.
 - [ ] Análisis de logs más robusto con formatos de log reales.

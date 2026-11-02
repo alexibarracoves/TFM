@@ -16,11 +16,12 @@ COPY --from=angular-builder /visor/dist/visor/browser /app/Server/public
 
 RUN chmod +x /app/Scripts/entrypoint.sh
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget curl gnupg lsb-release podman npm postgresql postgresql-contrib python3-venv && apt-get clean
+RUN apt-get update && apt-get install -y --no-install-recommends wget curl gnupg lsb-release npm postgresql postgresql-contrib python3-venv && apt-get clean
 
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install scikit-learn psycopg2-binary python-dateutil
+ENV PYTHONUNBUFFERED=1
+RUN pip install scikit-learn psycopg2-binary python-dateutil docker
 
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
 
@@ -35,7 +36,5 @@ EXPOSE 3000
 WORKDIR /app
 
 ENTRYPOINT ["/app/Scripts/entrypoint.sh"]
-
-ENV CONTAINER_HOST=unix:///run/podman/podman.sock
 
 CMD ["python3", "/app/Scripts/analisis_contenedores.py"]

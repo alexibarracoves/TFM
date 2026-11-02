@@ -2,40 +2,38 @@ import psycopg2
 import json
 import subprocess
 import time
+import docker
+import motor
 from utils import get_db, getContenedores, getImagenes, obtenerIdImagen
 
 contador = 0
 
 def inspect(id):
     try:
-        result = subprocess.run(["podman", "inspect", id], capture_output=True, text=True, check=True)
-        return json.loads(result.stdout)[0]
-    except subprocess.CalledProcessError as e:
-        print(f"Error ejecutando podman inspect para {id}: {e}")
+        return motor.inspeccionar(id)
+    except docker.errors.DockerException as e:
+        print(f"Error inspeccionando el contenedor {id}: {e}")
         return None
-    
+
 def comprobarModoRoot():
     conn = None
     try:
-        result = subprocess.run(["podman", "info", "--format=json"], capture_output=True, text=True, check=True)
-        podman_info = json.loads(result.stdout)
-        
-        modo_rootless = podman_info.get("host", {}).get("security", {}).get("rootless", False)
+        modo_root = motor.modoRoot()
 
         conn = get_db()
         cursor = conn.cursor()
 
         cursor.execute("""
-            INSERT INTO podman (id, modo_root)
-            VALUES (1, %s)
+            INSERT INTO motor (id, nombre, modo_root)
+            VALUES (1, %s, %s)
             ON CONFLICT (id) DO UPDATE
-            SET modo_root = EXCLUDED.modo_root
-        """, (not modo_rootless,))
-        
+            SET nombre = EXCLUDED.nombre, modo_root = EXCLUDED.modo_root
+        """, (motor.NOMBRE, modo_root))
+
         conn.commit()
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error al ejecutar podman info: {e}")
+
+    except docker.errors.DockerException as e:
+        print(f"Error al consultar la información del motor: {e}")
     except psycopg2.Error as e:
         print(f"Error de base de datos al actualizar el modo root: {e}")
     finally:
@@ -71,16 +69,18 @@ def insertarInfo(contenedores):
         cursor.execute("DELETE FROM contenedores")
         for contenedor in contenedores:
             datosContenedor = inspect(contenedor["Id"])
+            if not datosContenedor:
+                continue
             cursor.execute("""
                 INSERT INTO contenedores (nombre, estado, imagen_id, capacidades, puertos, interfaces)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (
-                datosContenedor["Name"],
-                datosContenedor.get("State", {}).get("Status", "desconocido"),
-                obtenerIdImagen(cursor, datosContenedor["ImageName"]),
-                ",".join(datosContenedor.get("EffectiveCaps", [])),
-                json.dumps(datosContenedor.get("NetworkSettings", {}).get("Ports", {})),
-                json.dumps(datosContenedor.get("NetworkSettings", {}).get("Networks", {}))
+                datosContenedor["nombre"],
+                datosContenedor["estado"],
+                obtenerIdImagen(cursor, contenedor["Image"]),
+                ",".join(datosContenedor["capacidades"]),
+                json.dumps(datosContenedor["puertos"]),
+                json.dumps(datosContenedor["redes"])
             ))
         conn.commit()
     except psycopg2.Error as e:

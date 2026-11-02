@@ -1,0 +1,5 @@
+{
+  "/contenedores": { "target": "http://localhost:3000", "secure": false },
+  "/imagenes": { "target": "http://localhost:3000", "secure": false },
+  "/vulnerabilidades": { "target": "http://localhost:3000", "secure": false }
+}

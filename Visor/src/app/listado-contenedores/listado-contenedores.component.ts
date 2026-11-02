@@ -44,6 +44,7 @@ export class ListadoContenedoresComponent implements OnDestroy {
   totalPages = 0;
   totalItems = 0;
   currentPage = 0;
+  motor = '';
   modo = '';
   mostrarCapacidades = false;
 
@@ -66,11 +67,12 @@ export class ListadoContenedoresComponent implements OnDestroy {
   }
 
   loadContenedores(page: number, size: number) {
-    this.http.get<any>(`http://localhost:3000/contenedores?page=${page}&size=${size}`).subscribe(res => {
+    this.http.get<any>(`/contenedores?page=${page}&size=${size}`).subscribe(res => {
       this.dataSource.data = res.data;
       this.totalPages = res.totalPages;
       this.totalItems = res.totalItems
-      this.modo = res.podmanMode;
+      this.motor = res.motor;
+      this.modo = res.modo;
     });
   }
 

@@ -30,10 +30,10 @@ app.get('/contenedores', async (req, res) => {
       SELECT COUNT(*) FROM contenedores
     `);
 
-    const podmanQuery = await pool.query(`
-      SELECT modo_root FROM podman LIMIT 1
+    const motorQuery = await pool.query(`
+      SELECT nombre, modo_root FROM motor LIMIT 1
     `);
-    const modoRoot = podmanQuery.rows.length > 0 ? podmanQuery.rows[0].modo_root : null;
+    const motor = motorQuery.rows.length > 0 ? motorQuery.rows[0] : null;
 
     const totalItems = parseInt(countQuery.rows[0].count);
     const totalPages = Math.ceil(totalItems / size);
@@ -42,7 +42,8 @@ app.get('/contenedores', async (req, res) => {
       data: dataQuery.rows,
       totalPages,
       totalItems,
-      podmanMode: modoRoot ? 'root' : 'rootless'
+      motor: motor ? motor.nombre : null,
+      modo: motor ? (motor.modo_root ? 'root' : 'rootless') : null
     });
 
   } catch (error) {

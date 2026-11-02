@@ -14,6 +14,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 })
 export class HeaderComponent {
   appName: string = 'Visor';
+  @Input() motor: string = '';
   @Input() modo: string = '';
 
   @Input() mostrarCapacidades: boolean = false;

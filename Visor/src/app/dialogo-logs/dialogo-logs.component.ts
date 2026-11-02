@@ -27,7 +27,7 @@ export class DialogoLogsComponent {
   ) {}
 
   ngOnInit(): void {
-    this.http.get<any>(`http://localhost:3000/contenedores/${this.data.nombreContenedor}/logs/resumen`)
+    this.http.get<any>(`/contenedores/${this.data.nombreContenedor}/logs/resumen`)
       .subscribe({
         next: (res) => {
           this.resumen = res.resumen;
