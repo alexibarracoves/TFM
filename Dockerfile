@@ -30,7 +30,10 @@ COPY Server/ /app/Server/
 COPY --from=visor /visor/dist/visor/browser /app/Server/public
 COPY Scripts/ /app/Scripts/
 
-RUN chmod +x /app/Scripts/entrypoint.sh && mkdir -p /app/data
+# Usuario al que el entrypoint cede la ejecución cuando el socket lo permite
+RUN chmod +x /app/Scripts/entrypoint.sh \
+    && useradd --system --uid 10001 --user-group --no-create-home analizador \
+    && mkdir -p /app/data
 
 ENV PYTHONUNBUFFERED=1 \
     NODE_ENV=production \

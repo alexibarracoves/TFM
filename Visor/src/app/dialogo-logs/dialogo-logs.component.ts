@@ -33,8 +33,8 @@ export class DialogoLogsComponent {
           this.resumen = res.resumen;
           this.loading = false;
         },
-        error: () => {
-          this.resumen = 'Error al analizar los logs.';
+        error: (err) => {
+          this.resumen = err.error?.resumen || 'Error al analizar los logs.';
           this.loading = false;
           this.error = true;
         }

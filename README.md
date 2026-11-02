@@ -29,7 +29,7 @@ El contenedor se comunica con el motor a través de su socket, que hay que monta
 
 ## Puesta en marcha
 
-> **Aviso de seguridad:** montar el socket del motor de contenedores da a este contenedor control total sobre el resto de contenedores (y, en modo *rootful*, sobre la máquina). La API no tiene autenticación: no publiques el puerto 3000 en redes no confiables.
+> **Aviso de seguridad:** montar el socket del motor de contenedores da a este contenedor control total sobre el resto de contenedores (y, en modo *rootful*, sobre la máquina). Lee la sección de [seguridad](#seguridad) antes de exponerlo fuera de tu equipo.
 
 Se necesita acceso a Internet en el primer arranque, porque Trivy descarga su base de datos de vulnerabilidades.
 
@@ -46,7 +46,7 @@ docker build -t analizador-contenedores .
 Linux, y también Docker Desktop en Windows y macOS:
 
 ```bash
-docker run -d --name analizador -p 3000:3000 \
+docker run -d --name analizador -p 127.0.0.1:3000:3000 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v analizador-datos:/app/data \
   analizador-contenedores
@@ -58,7 +58,7 @@ docker run -d --name analizador -p 3000:3000 \
 
 ```bash
 sudo systemctl enable --now podman.socket
-sudo podman run -d --name analizador -p 3000:3000 \
+sudo podman run -d --name analizador -p 127.0.0.1:3000:3000 \
   -v /run/podman/podman.sock:/run/podman/podman.sock \
   -v analizador-datos:/app/data \
   analizador-contenedores
@@ -68,7 +68,7 @@ sudo podman run -d --name analizador -p 3000:3000 \
 
 ```bash
 systemctl --user enable --now podman.socket
-podman run -d --name analizador -p 3000:3000 \
+podman run -d --name analizador -p 127.0.0.1:3000:3000 \
   -v $XDG_RUNTIME_DIR/podman/podman.sock:/run/podman/podman.sock \
   -v analizador-datos:/app/data \
   analizador-contenedores
@@ -79,6 +79,17 @@ Abre <http://localhost:3000>.
 El volumen `analizador-datos` guarda la base de datos y la caché de Trivy (alrededor de 1 GB tras el primer escaneo). Sin él, cada vez que se recrea el contenedor se vuelve a descargar la base de datos de vulnerabilidades y se reescanean todas las imágenes.
 
 El contenedor tiene un *healthcheck* sobre `GET /salud`.
+
+## Seguridad
+
+- **Acceso solo local por defecto.** Los ejemplos publican el puerto en `127.0.0.1`, así que el panel solo es accesible desde la propia máquina. Si lo publicas en otra interfaz, define un token.
+- **Token de acceso opcional.** Con `-e ANALIZADOR_TOKEN=<token>` todas las rutas (salvo `/salud`) exigen el token:
+  - en el navegador, abre una vez `http://<host>:3000/?token=<token>`; se guarda en una cookie `HttpOnly` y `SameSite=Strict` y se quita de la URL;
+  - desde scripts, envía la cabecera `Authorization: Bearer <token>`.
+
+  Genera uno aleatorio, por ejemplo con `openssl rand -hex 32`. El token viaja en claro por HTTP: para accesos remotos, pon delante un proxy con HTTPS.
+- **Sin root cuando el socket lo permite.** Si el socket pertenece a un grupo distinto de root (el grupo `docker` en Linux), el contenedor deja root al arrancar y continúa como el usuario `analizador` (uid 10001), solo con ese grupo, sin *capabilities* y con `no_new_privs`. Si solo root puede usar el socket (Docker Desktop, Podman *rootful*), sigue como root y lo avisa en los logs. En Podman *rootless*, el root del contenedor ya es tu usuario sin privilegios. Para desactivar el cambio de usuario: `-e ANALIZADOR_MANTENER_ROOT=1`.
+- **Superficie mínima.** La API solo lee de la base de datos y no tiene CORS (el frontend se sirve desde el mismo origen). Envía cabeceras de seguridad (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`) y limita la paginación a 100 elementos. Además, solo analiza los logs de contenedores en ejecución con nombre válido, como mucho dos análisis a la vez.
 
 ### Contenedor de prueba
 
@@ -135,7 +146,7 @@ DB_PATH=data/analizador.db python Scripts/analisis_contenedores.py
 - [x] Soporte para Docker y Podman a través de la API compatible con Docker.
 - [x] URLs relativas en el frontend.
 - [x] Imagen más ligera: SQLite en lugar de PostgreSQL, versiones de Python y Node con soporte, Trivy con versión fija y caché persistente.
-- [ ] Endurecimiento: escuchar en `127.0.0.1` por defecto, token de acceso opcional, CORS restringido, ejecución sin root cuando el socket lo permita.
+- [x] Endurecimiento: acceso local por defecto, token de acceso opcional, sin CORS, cabeceras de seguridad, validación de entrada y ejecución sin root cuando el socket lo permita.
 - [ ] Análisis de logs más robusto con formatos de log reales.
 - [ ] CI con GitHub Actions y publicación en Docker Hub.
 
