@@ -27,7 +27,7 @@ app.get('/contenedores', async (req, res) => {
     `, [size, offset]);
 
     const countQuery = await pool.query(`
-      SELECT COUNT(*) FROM contenedores
+      SELECT COUNT(*) AS count FROM contenedores
     `);
 
     const motorQuery = await pool.query(`
@@ -39,7 +39,7 @@ app.get('/contenedores', async (req, res) => {
     const totalPages = Math.ceil(totalItems / size);
 
     res.json({
-      data: dataQuery.rows,
+      data: dataQuery.rows.map(c => ({ ...c, puertos: JSON.parse(c.puertos), interfaces: JSON.parse(c.interfaces) })),
       totalPages,
       totalItems,
       motor: motor ? motor.nombre : null,
@@ -125,6 +125,15 @@ app.get('/contenedores/:nombre/logs/resumen', async (req, res) => {
 
     res.json({ resumen: stdout.trim() });
   });
+});
+
+app.get('/salud', (req, res) => {
+  try {
+    pool.query('SELECT 1');
+    res.json({ estado: 'ok' });
+  } catch (error) {
+    res.status(503).json({ estado: 'error' });
+  }
 });
 
 app.use((req, res) => {

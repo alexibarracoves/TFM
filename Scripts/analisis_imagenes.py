@@ -1,4 +1,4 @@
-import psycopg2
+import sqlite3
 import json
 import tempfile
 import subprocess
@@ -11,7 +11,12 @@ traducciones = {
     "HIGH": "Alta",
     "CRITICAL": "Crítica",
     "affected": "Afectado",
-    "fixed": "Corregido"
+    "fixed": "Corregido",
+    "will_not_fix": "No se corregirá",
+    "fix_deferred": "Corrección aplazada",
+    "end_of_life": "Sin soporte",
+    "under_investigation": "En investigación",
+    "not_affected": "No afectado"
 }
 
 def actualizarImagenes(images):
@@ -19,12 +24,12 @@ def actualizarImagenes(images):
     try:
         cursor = conn.cursor()
         for nombre, hash in images.items():
-            cursor.execute("SELECT id FROM imagenes WHERE nombre = %s OR hash = %s", (nombre, hash))
+            cursor.execute("SELECT id FROM imagenes WHERE nombre = ? OR hash = ?", (nombre, hash))
             if not cursor.fetchone():
-                cursor.execute("INSERT INTO imagenes (nombre, hash) VALUES (%s, %s)", (nombre, hash))
+                cursor.execute("INSERT INTO imagenes (nombre, hash) VALUES (?, ?)", (nombre, hash))
 
         conn.commit()
-    except psycopg2.Error as e:
+    except sqlite3.Error as e:
         print(f"Error de base de datos al actualizar imágenes: {e}")
     finally:
         conn.close()
@@ -32,7 +37,10 @@ def actualizarImagenes(images):
 def ejecutarTrivy(nombre):
     try:
         with tempfile.NamedTemporaryFile() as tmpfile:
-            subprocess.run(["trivy", "image", "--format", "json", "-o", tmpfile.name, nombre], check=True)
+            subprocess.run([
+                "trivy", "image", "--scanners", "vuln", "--skip-version-check", "--quiet",
+                "--format", "json", "-o", tmpfile.name, nombre
+            ], check=True)
             tmpfile.seek(0)
             resultado_json = json.load(tmpfile)
         return resultado_json
@@ -50,7 +58,7 @@ def insertarVulnerabilidades(nombre, vulnerabilidades):
             print(f"No se encontró la imagen {nombre} en la base de datos.")
             return
 
-        cursor.execute("DELETE FROM vulnerabilidades WHERE imagen_id = %s", (idImagen,))
+        cursor.execute("DELETE FROM vulnerabilidades WHERE imagen_id = ?", (idImagen,))
 
         conteo_severidades = {
             "Desconocida": 0,
@@ -67,26 +75,26 @@ def insertarVulnerabilidades(nombre, vulnerabilidades):
                 cursor.execute("""
                     INSERT INTO vulnerabilidades 
                     (imagen_id, vulnerabilidad, libreria, severidad, estado, version, informacion, enlace) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     idImagen,
                     componentes["VulnerabilityID"],
                     componentes["PkgName"],
                     severidad,
-                    traducciones.get(componentes["Status"]),
+                    traducciones.get(componentes.get("Status"), componentes.get("Status")),
                     componentes.get("InstalledVersion", ""),
                     componentes.get("Title", ""),
                     componentes.get("PrimaryURL", "")
                 ))
 
         cursor.execute("""
-            UPDATE imagenes SET numero_desconocida = %s, numero_baja = %s, numero_media = %s, numero_alta = %s, numero_critica = %s WHERE id = %s
+            UPDATE imagenes SET numero_desconocida = ?, numero_baja = ?, numero_media = ?, numero_alta = ?, numero_critica = ? WHERE id = ?
         """, (
             conteo_severidades["Desconocida"], conteo_severidades["Baja"], conteo_severidades["Media"], conteo_severidades["Alta"], conteo_severidades["Crítica"], idImagen
         ))
         
         conn.commit()
-    except psycopg2.Error as e:
+    except sqlite3.Error as e:
         print(f"Error de base de datos al almacenar vulnerabilidades: {e}")
     finally:
         conn.close()

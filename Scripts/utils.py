@@ -1,17 +1,27 @@
-import psycopg2
+import os
+import sqlite3
 import docker
 import motor
 
-DB_CONFIG = {
-    "dbname": "contenedores",
-    "user": "postgres",
-    "password": "postgres",
-    "host": "localhost",
-    "port": "5432"
-}
+DB_PATH = os.environ.get("DB_PATH", "/app/data/analizador.db")
+ESQUEMA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "db_init.sql")
 
 def get_db():
-    return psycopg2.connect(**DB_CONFIG)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+def inicializarDb():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = get_db()
+    try:
+        # WAL permite que la API lea mientras el recolector escribe
+        conn.execute("PRAGMA journal_mode = WAL")
+        with open(ESQUEMA, encoding="utf-8") as f:
+            conn.executescript(f.read())
+        conn.commit()
+    finally:
+        conn.close()
 
 def getContenedores():
     try:
@@ -30,7 +40,7 @@ def getImagenes(contenedores):
     return imagenes
 
 def obtenerIdImagen(cursor, nombre):
-    cursor.execute("SELECT id FROM imagenes WHERE nombre = %s", (nombre,))
+    cursor.execute("SELECT id FROM imagenes WHERE nombre = ?", (nombre,))
     idImagen = cursor.fetchone()
     if not idImagen:
         return None

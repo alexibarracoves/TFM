@@ -1,4 +1,4 @@
-import psycopg2
+import sqlite3
 import json
 import subprocess
 import time
@@ -25,7 +25,7 @@ def comprobarModoRoot():
 
         cursor.execute("""
             INSERT INTO motor (id, nombre, modo_root)
-            VALUES (1, %s, %s)
+            VALUES (1, ?, ?)
             ON CONFLICT (id) DO UPDATE
             SET nombre = EXCLUDED.nombre, modo_root = EXCLUDED.modo_root
         """, (motor.NOMBRE, modo_root))
@@ -34,7 +34,7 @@ def comprobarModoRoot():
 
     except docker.errors.DockerException as e:
         print(f"Error al consultar la información del motor: {e}")
-    except psycopg2.Error as e:
+    except sqlite3.Error as e:
         print(f"Error de base de datos al actualizar el modo root: {e}")
     finally:
         if conn:
@@ -47,7 +47,7 @@ def comprobarImagenes(contenedores):
         cursor = conn.cursor()
         nueva = False
         for nombre, hash in getImagenes(contenedores).items():
-            cursor.execute("SELECT id FROM imagenes WHERE nombre = %s OR hash = %s", (nombre, hash))
+            cursor.execute("SELECT id FROM imagenes WHERE nombre = ? OR hash = ?", (nombre, hash))
             if not cursor.fetchone():
                 nueva = True
                 break
@@ -56,7 +56,7 @@ def comprobarImagenes(contenedores):
             print("Imagenes nuevas detectadas, ejecutando análisis...")
             subprocess.Popen(["python3", "/app/Scripts/analisis_imagenes.py"])
             contador = 0
-    except psycopg2.Error as e:
+    except sqlite3.Error as e:
         print(f"Error de base de datos al actualizar imágenes: {e}")
     finally:
         conn.close()
@@ -73,7 +73,7 @@ def insertarInfo(contenedores):
                 continue
             cursor.execute("""
                 INSERT INTO contenedores (nombre, estado, imagen_id, capacidades, puertos, interfaces)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 datosContenedor["nombre"],
                 datosContenedor["estado"],
@@ -83,7 +83,7 @@ def insertarInfo(contenedores):
                 json.dumps(datosContenedor["redes"])
             ))
         conn.commit()
-    except psycopg2.Error as e:
+    except sqlite3.Error as e:
         print(f"Error de base de datos: {e}")
     finally:
         if conn:

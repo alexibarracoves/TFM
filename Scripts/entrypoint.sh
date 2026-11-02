@@ -1,12 +1,18 @@
 #!/bin/bash
+set -e
 
-service postgresql start
-su - postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres';\""
-su - postgres -c "psql -f /app/Scripts/db_init.sql"
-
-service postgresql restart
+# Crea la base de datos y comprueba la conexión con el motor antes de arrancar nada
+cd /app/Scripts
+python3 -c "import utils; utils.inicializarDb()"
 
 cd /app/Server
 node index.js &
 
-exec "$@"
+"$@" &
+
+# Si cualquiera de los dos procesos termina, se para el contenedor
+trap 'kill -TERM $(jobs -p) 2>/dev/null' TERM INT
+wait -n
+codigo=$?
+kill -TERM $(jobs -p) 2>/dev/null || true
+exit $codigo

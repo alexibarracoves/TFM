@@ -1,39 +1,49 @@
-FROM node:18-alpine AS angular-builder
-
+# Frontend (Angular)
+FROM node:22-alpine AS visor
 WORKDIR /visor
+COPY Visor/package.json Visor/package-lock.json ./
+RUN npm ci
 COPY Visor/ ./
-RUN npm ci && npm run build -- --configuration production
+RUN npm run build -- --configuration production
 
-FROM python:3.10-slim
+# Dependencias de la API (Node)
+FROM node:24-trixie-slim AS servidor
+WORKDIR /server
+COPY Server/package.json Server/package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM aquasec/trivy:0.76.1 AS trivy
+
+# Imagen final: Python con Node y Trivy copiados como binarios
+FROM python:3.13-slim
+
+COPY --from=servidor /usr/local/bin/node /usr/local/bin/node
+COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
 
 WORKDIR /app
 
-COPY Scripts/ /app/Scripts/
+COPY Scripts/requirements.txt /app/Scripts/requirements.txt
+RUN pip install --no-cache-dir -r /app/Scripts/requirements.txt
+
+COPY --from=servidor /server/node_modules /app/Server/node_modules
 COPY Server/ /app/Server/
+COPY --from=visor /visor/dist/visor/browser /app/Server/public
+COPY Scripts/ /app/Scripts/
 
-RUN mkdir -p /app/Server/public
-COPY --from=angular-builder /visor/dist/visor/browser /app/Server/public
+RUN chmod +x /app/Scripts/entrypoint.sh && mkdir -p /app/data
 
-RUN chmod +x /app/Scripts/entrypoint.sh
+ENV PYTHONUNBUFFERED=1 \
+    NODE_ENV=production \
+    DB_PATH=/app/data/analizador.db \
+    TRIVY_CACHE_DIR=/app/data/trivy
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget curl gnupg lsb-release npm postgresql postgresql-contrib python3-venv && apt-get clean
-
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-RUN pip install scikit-learn psycopg2-binary python-dateutil docker
-
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && apt-get install -y nodejs
-
-RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor -o /usr/share/keyrings/trivy-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/trivy-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/trivy.list \
-    && apt-get update && apt-get install -y trivy
-
-RUN cd /app/Server && npm install
+# Base de datos y caché de Trivy (~1 GB tras el primer escaneo)
+VOLUME /app/data
 
 EXPOSE 3000
 
-WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000/salud', timeout=4)"
 
 ENTRYPOINT ["/app/Scripts/entrypoint.sh"]
 

@@ -1,30 +1,27 @@
-CREATE DATABASE contenedores;
-\c contenedores;
-
 CREATE TABLE IF NOT EXISTS imagenes (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT UNIQUE,
     hash TEXT UNIQUE,
-    numero_desconocida INT,
-    numero_baja INT,
-    numero_media INT,
-    numero_alta INT,
-    numero_critica INT
+    numero_desconocida INTEGER,
+    numero_baja INTEGER,
+    numero_media INTEGER,
+    numero_alta INTEGER,
+    numero_critica INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS contenedores (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT,
     estado TEXT,
-    imagen_id INT REFERENCES imagenes(id) ON DELETE CASCADE,
+    imagen_id INTEGER REFERENCES imagenes(id) ON DELETE CASCADE,
     capacidades TEXT,
-    puertos JSONB,
-    interfaces JSONB
+    puertos TEXT,
+    interfaces TEXT
 );
 
 CREATE TABLE IF NOT EXISTS vulnerabilidades (
-    id SERIAL PRIMARY KEY,
-    imagen_id INT REFERENCES imagenes(id) ON DELETE CASCADE,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    imagen_id INTEGER REFERENCES imagenes(id) ON DELETE CASCADE,
     vulnerabilidad TEXT,
     libreria TEXT,
     severidad TEXT,
@@ -34,8 +31,10 @@ CREATE TABLE IF NOT EXISTS vulnerabilidades (
     enlace TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_vulnerabilidades_imagen ON vulnerabilidades (imagen_id);
+
 CREATE TABLE IF NOT EXISTS motor (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     nombre TEXT NOT NULL,
-    modo_root BOOLEAN NOT NULL
+    modo_root INTEGER NOT NULL
 );

@@ -20,7 +20,7 @@ Todo se ejecuta dentro de un único contenedor:
 | Recolector | `Scripts/analisis_contenedores.py` | Cada 5 s lista e inspecciona los contenedores en ejecución y guarda el estado en la base de datos. |
 | Escáner de imágenes | `Scripts/analisis_imagenes.py` | Lanza Trivy cuando aparece una imagen nueva y, además, cada ~10 minutos. |
 | Analizador de logs | `Scripts/analisis_logs.py` | Se ejecuta bajo demanda desde la API sobre los logs del contenedor. |
-| Base de datos | `Scripts/db_init.sql` | PostgreSQL local con las tablas `imagenes`, `contenedores`, `vulnerabilidades` y `motor`. |
+| Base de datos | `Scripts/db_init.sql` | SQLite en `/app/data` con las tablas `imagenes`, `contenedores`, `vulnerabilidades` y `motor`. El recolector escribe y la API solo lee. |
 | API | `Server/` | Express (Node.js) en el puerto 3000; también sirve el frontend. |
 | Visor | `Visor/` | Frontend en Angular + Angular Material. |
 | Generador de logs | `Generador-logs/` | Contenedor de prueba que emite logs aleatorios con ráfagas para probar el análisis. |
@@ -48,6 +48,7 @@ Linux, y también Docker Desktop en Windows y macOS:
 ```bash
 docker run -d --name analizador -p 3000:3000 \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v analizador-datos:/app/data \
   analizador-contenedores
 ```
 
@@ -59,6 +60,7 @@ docker run -d --name analizador -p 3000:3000 \
 sudo systemctl enable --now podman.socket
 sudo podman run -d --name analizador -p 3000:3000 \
   -v /run/podman/podman.sock:/run/podman/podman.sock \
+  -v analizador-datos:/app/data \
   analizador-contenedores
 ```
 
@@ -68,10 +70,15 @@ sudo podman run -d --name analizador -p 3000:3000 \
 systemctl --user enable --now podman.socket
 podman run -d --name analizador -p 3000:3000 \
   -v $XDG_RUNTIME_DIR/podman/podman.sock:/run/podman/podman.sock \
+  -v analizador-datos:/app/data \
   analizador-contenedores
 ```
 
 Abre <http://localhost:3000>.
+
+El volumen `analizador-datos` guarda la base de datos y la caché de Trivy (alrededor de 1 GB tras el primer escaneo). Sin él, cada vez que se recrea el contenedor se vuelve a descargar la base de datos de vulnerabilidades y se reescanean todas las imágenes.
+
+El contenedor tiene un *healthcheck* sobre `GET /salud`.
 
 ### Contenedor de prueba
 
@@ -108,20 +115,27 @@ npm start        # http://localhost:4200
 
 El frontend redirige la API a `http://localhost:3000` mediante `proxy.conf.json`.
 
-API (requiere PostgreSQL con el esquema de `Scripts/db_init.sql`):
+API (Node.js 22.13 o superior; lee la base de datos que indique `DB_PATH`):
 
 ```bash
 cd Server
 npm ci
-node index.js
+DB_PATH=../data/analizador.db node index.js
+```
+
+Recolector (Python 3.13; crea la base de datos si no existe):
+
+```bash
+pip install -r Scripts/requirements.txt
+DB_PATH=data/analizador.db python Scripts/analisis_contenedores.py
 ```
 
 ## Hoja de ruta
 
 - [x] Soporte para Docker y Podman a través de la API compatible con Docker.
 - [x] URLs relativas en el frontend.
-- [ ] Imagen más ligera: SQLite en lugar de PostgreSQL, versiones de Python y Node con soporte, Trivy con versión fija y caché persistente, usuario sin privilegios.
-- [ ] Endurecimiento: escuchar en `127.0.0.1` por defecto, token de acceso opcional, CORS restringido.
+- [x] Imagen más ligera: SQLite en lugar de PostgreSQL, versiones de Python y Node con soporte, Trivy con versión fija y caché persistente.
+- [ ] Endurecimiento: escuchar en `127.0.0.1` por defecto, token de acceso opcional, CORS restringido, ejecución sin root cuando el socket lo permita.
 - [ ] Análisis de logs más robusto con formatos de log reales.
 - [ ] CI con GitHub Actions y publicación en Docker Hub.
 
