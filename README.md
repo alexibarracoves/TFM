@@ -88,7 +88,7 @@ El contenedor tiene un *healthcheck* sobre `GET /salud`.
   - desde scripts, envía la cabecera `Authorization: Bearer <token>`.
 
   Genera uno aleatorio, por ejemplo con `openssl rand -hex 32`. El token viaja en claro por HTTP: para accesos remotos, pon delante un proxy con HTTPS.
-- **Sin root cuando el socket lo permite.** Si el socket pertenece a un grupo distinto de root (el grupo `docker` en Linux), el contenedor deja root al arrancar y continúa como el usuario `analizador` (uid 10001), solo con ese grupo, sin *capabilities* y con `no_new_privs`. Si solo root puede usar el socket (Docker Desktop, Podman *rootful*), sigue como root y lo avisa en los logs. En Podman *rootless*, el root del contenedor ya es tu usuario sin privilegios. Para desactivar el cambio de usuario: `-e ANALIZADOR_MANTENER_ROOT=1`.
+- **Sin root cuando el socket lo permite.** Si el socket pertenece a un grupo distinto de root (el grupo `docker` en Linux), el contenedor deja root al arrancar y continúa como el usuario `analizador` (uid 10001), solo con ese grupo, sin *capabilities* y con `no_new_privs`. Si el socket pertenece a un usuario distinto de root (Podman o Docker *rootless*), continúa como ese usuario. Si solo root puede usar el socket (Docker Desktop, Podman *rootful*), sigue como root y lo avisa en los logs. Para desactivar el cambio de usuario: `-e ANALIZADOR_MANTENER_ROOT=1`.
 - **Superficie mínima.** La API solo lee de la base de datos y no tiene CORS (el frontend se sirve desde el mismo origen). Envía cabeceras de seguridad (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`) y limita la paginación a 100 elementos. Además, solo analiza los logs de contenedores en ejecución con nombre válido, como mucho dos análisis a la vez.
 
 ### Contenedor de prueba
