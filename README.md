@@ -21,7 +21,7 @@ Todo se ejecuta dentro de un único contenedor:
 | Escáner de imágenes | `Scripts/analisis_imagenes.py` | Lanza Trivy sobre las imágenes nuevas o con un escaneo fallido (reintento cada 5 minutos) y reescanea todas cada ~10 minutos. |
 | Analizador de logs | `Scripts/analisis_logs.py` | Se ejecuta bajo demanda desde la API sobre los logs del contenedor. |
 | Base de datos | `Scripts/db_init.sql` | SQLite en `/app/data` con las tablas `imagenes`, `contenedores`, `vulnerabilidades` y `motor`. El recolector escribe y la API solo lee. |
-| API | `Server/` | Express (Node.js) en el puerto 3000; también sirve el frontend. |
+| API | `Server/servidor.py` | Servidor HTTP con la librería estándar de Python en el puerto 3000; también sirve el frontend. |
 | Visor | `Visor/` | Frontend en Angular + Angular Material. |
 | Generador de logs | `Generador-logs/` | Contenedor de prueba que emite logs aleatorios con ráfagas y algún evento raro (accesos denegados, procesos caídos, disco lleno) para probar el análisis. |
 
@@ -137,12 +137,10 @@ npm start        # http://localhost:4200
 
 El frontend redirige la API a `http://localhost:3000` mediante `proxy.conf.json`.
 
-API (Node.js 22.13 o superior; lee la base de datos que indique `DB_PATH`):
+API (Python 3.13, sin dependencias externas; lee la base de datos que indique `DB_PATH`):
 
 ```bash
-cd Server
-npm ci
-DB_PATH=../data/analizador.db node index.js
+DB_PATH=data/analizador.db python Server/servidor.py
 ```
 
 Recolector (Python 3.13; crea la base de datos si no existe):
@@ -156,7 +154,7 @@ DB_PATH=data/analizador.db python Scripts/analisis_contenedores.py
 
 - [x] Soporte para Docker y Podman a través de la API compatible con Docker.
 - [x] URLs relativas en el frontend.
-- [x] Imagen más ligera: SQLite en lugar de PostgreSQL, versiones de Python y Node con soporte, Trivy con versión fija y caché persistente.
+- [x] Imagen más ligera: SQLite en lugar de PostgreSQL, API en Python (Node solo se usa para compilar el frontend), dependencias sin tests ni pip, Trivy con versión fija y caché persistente.
 - [x] Endurecimiento: acceso local por defecto, token de acceso opcional, sin CORS, cabeceras de seguridad, validación de entrada y ejecución sin root cuando el socket lo permita.
 - [x] Análisis de logs más robusto con formatos de log reales y reintento de los escaneos fallidos.
 - [ ] CI con GitHub Actions y publicación en Docker Hub.

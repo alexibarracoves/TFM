@@ -47,7 +47,7 @@ cd /app/Scripts
 python3 -c "import utils; utils.inicializarDb()"
 
 cd /app/Server
-node index.js &
+python3 /app/Server/servidor.py &
 
 "$@" &
 
