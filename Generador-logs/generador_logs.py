@@ -15,6 +15,14 @@ mensajes = {
     'ERROR':   ['Conexión rechazada', 'Excepción no controlada', 'Fallo crítico']
 }
 
+# Eventos poco frecuentes (anomalías reales que el análisis debería detectar)
+EVENTO_RARO_PROB = 0.003
+eventos_raros = [
+    lambda: ('WARNING', f"Intento de acceso denegado para el usuario admin desde 10.0.{random.randint(0, 255)}.{random.randint(1, 254)}"),
+    lambda: ('ERROR', f"El proceso worker-{random.randint(1, 8)} terminó inesperadamente (señal 9)"),
+    lambda: ('CRITICAL', "Disco lleno en /var/lib/datos: no se pueden escribir más registros"),
+]
+
 # Parámetros para ráfagas (picos) de actividad
 BURST_PROB      = 0.10   # 10% de probabilidad de iniciar una ráfaga
 BURST_MIN       = 5      # mínimo de logs en ráfaga
@@ -28,8 +36,11 @@ NORMAL_SLEEP_MAX = 1.0
 
 def generar_log():
     """Genera un log con timestamp ISO, nivel y mensaje aleatorio."""
-    nivel = random.choices(niveles, pesos)[0]
-    msg   = random.choice(mensajes[nivel])
+    if random.random() < EVENTO_RARO_PROB:
+        nivel, msg = random.choice(eventos_raros)()
+    else:
+        nivel = random.choices(niveles, pesos)[0]
+        msg   = random.choice(mensajes[nivel])
     ts    = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
     print(f"{ts} {nivel} {msg}", flush=True)
 

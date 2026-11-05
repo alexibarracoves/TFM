@@ -4,7 +4,7 @@ Herramienta autocontenida que se ejecuta como un contenedor más y analiza los c
 
 - **Configuración en tiempo de ejecución**: estado, capacidades Linux efectivas, puertos publicados, redes y si el motor se ejecuta en modo *root* o *rootless*.
 - **Vulnerabilidades de las imágenes**: escaneo con [Trivy](https://trivy.dev) de cada imagen en uso, con el recuento por severidad y el detalle de cada CVE.
-- **Análisis de logs**: rango temporal, recuento por nivel, detección de anomalías (TF-IDF + Isolation Forest) y detección de picos de actividad.
+- **Análisis de logs**: rango temporal, recuento por nivel, detección de anomalías con Isolation Forest, errores más frecuentes y picos de actividad. Ver [cómo funciona](#análisis-de-logs).
 
 Funciona con **Docker** y con **Podman** (rootful o rootless).
 
@@ -18,12 +18,12 @@ Todo se ejecuta dentro de un único contenedor:
 |---|---|---|
 | Motor | `Scripts/motor.py` | Acceso al motor de contenedores mediante la API compatible con Docker (y la API nativa de Podman cuando hace falta). |
 | Recolector | `Scripts/analisis_contenedores.py` | Cada 5 s lista e inspecciona los contenedores en ejecución y guarda el estado en la base de datos. |
-| Escáner de imágenes | `Scripts/analisis_imagenes.py` | Lanza Trivy cuando aparece una imagen nueva y, además, cada ~10 minutos. |
+| Escáner de imágenes | `Scripts/analisis_imagenes.py` | Lanza Trivy sobre las imágenes nuevas o con un escaneo fallido (reintento cada 5 minutos) y reescanea todas cada ~10 minutos. |
 | Analizador de logs | `Scripts/analisis_logs.py` | Se ejecuta bajo demanda desde la API sobre los logs del contenedor. |
 | Base de datos | `Scripts/db_init.sql` | SQLite en `/app/data` con las tablas `imagenes`, `contenedores`, `vulnerabilidades` y `motor`. El recolector escribe y la API solo lee. |
 | API | `Server/` | Express (Node.js) en el puerto 3000; también sirve el frontend. |
 | Visor | `Visor/` | Frontend en Angular + Angular Material. |
-| Generador de logs | `Generador-logs/` | Contenedor de prueba que emite logs aleatorios con ráfagas para probar el análisis. |
+| Generador de logs | `Generador-logs/` | Contenedor de prueba que emite logs aleatorios con ráfagas y algún evento raro (accesos denegados, procesos caídos, disco lleno) para probar el análisis. |
 
 El contenedor se comunica con el motor a través de su socket, que hay que montar dentro. Al arrancar busca `/var/run/docker.sock` y después `/run/podman/podman.sock`; también se puede indicar otro con la variable `DOCKER_HOST`. Trivy usa ese mismo socket, así que también analiza imágenes construidas en local.
 
@@ -103,7 +103,17 @@ Pulsa **Analizar** en la fila de `generador-logs` para ver el resumen de logs.
 ### Limitaciones conocidas
 
 - Con Docker, las capacidades efectivas se calculan a partir de las capacidades por defecto del motor y de `CapAdd`/`CapDrop`/`--privileged`. Con Podman se leen directamente de su API.
-- Trivy no analiza algunas distribuciones, como Fedora. En esas imágenes el recuento de vulnerabilidades sale vacío.
+- Trivy no analiza los paquetes de algunas distribuciones, como Fedora. Esas imágenes se marcan como *no soportadas* y solo se cuentan las vulnerabilidades de las librerías de aplicación (npm, pip, etc.).
+
+## Análisis de logs
+
+El análisis se hace sobre las últimas 10 000 líneas del contenedor:
+
+1. **Nivel de cada línea.** Se reconocen JSON (`level`, `severity`…), *logfmt* (`level=error`), niveles entre corchetes (`[error]`, como nginx), niveles en mayúsculas (`ERROR`, `LOG:`, `FATAL:`, como postgres), errores de SQL Server (`Error: N, Severity: N`) y códigos HTTP de los logs de acceso (4xx → WARN, 5xx → ERROR). Las líneas sin nivel reconocible se marcan como `SIN NIVEL`.
+2. **Plantilla de cada mensaje.** Se sustituyen fechas, IPs, UUIDs, hexadecimales y números por comodines, de modo que `GET /users/8231 200 12ms` y `GET /users/1177 200 9ms` sean el mismo tipo de mensaje. Los números que siguen a `Error`, `code`, `status` o `Severity` se conservan, porque identifican el error.
+3. **Anomalías con Isolation Forest.** Para cada línea se usan como características la gravedad del nivel, la rareza de su plantilla (−log₁₀ de su frecuencia) y el contenido de la plantilla (TF-IDF reducido a 3 dimensiones con SVD). El modelo usa `contamination='auto'`, así que solo marca lo que supera su umbral y puede no marcar nada. De lo marcado se descartan los tipos de mensaje que superan el 1 % de las líneas (o 3 apariciones), porque forman parte del comportamiento habitual.
+4. **Errores más frecuentes.** Un error que se repite mucho no es una anomalía, pero importa, así que se lista aparte.
+5. **Picos de actividad.** Ventanas de 30 s con más líneas que la media + 3σ y al menos 10 líneas.
 
 ## API
 
@@ -113,6 +123,7 @@ Pulsa **Analizar** en la fila de `generador-logs` para ver el resumen de logs.
 | GET | `/imagenes/:id` | Imagen con el recuento de vulnerabilidades por severidad. |
 | GET | `/vulnerabilidades/:idImagen?page=&size=` | Vulnerabilidades de una imagen (paginado). |
 | GET | `/contenedores/:nombre/logs/resumen` | Resumen del análisis de las últimas 10 000 líneas de log. |
+| GET | `/salud` | Estado del servicio (no requiere token). |
 
 ## Desarrollo
 
@@ -147,7 +158,7 @@ DB_PATH=data/analizador.db python Scripts/analisis_contenedores.py
 - [x] URLs relativas en el frontend.
 - [x] Imagen más ligera: SQLite en lugar de PostgreSQL, versiones de Python y Node con soporte, Trivy con versión fija y caché persistente.
 - [x] Endurecimiento: acceso local por defecto, token de acceso opcional, sin CORS, cabeceras de seguridad, validación de entrada y ejecución sin root cuando el socket lo permita.
-- [ ] Análisis de logs más robusto con formatos de log reales.
+- [x] Análisis de logs más robusto con formatos de log reales y reintento de los escaneos fallidos.
 - [ ] CI con GitHub Actions y publicación en Docker Hub.
 
 ## Licencia

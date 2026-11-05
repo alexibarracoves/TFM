@@ -25,6 +25,9 @@ interface Imagen {
   numero_media: number; 
   numero_alta: number;
   numero_critica: number;
+  estado_escaneo: string;
+  detalle_escaneo: string | null;
+  fecha_escaneo: string | null;
 }
 
 @Component({
@@ -51,7 +54,17 @@ export class DialogoVulnerabilidadesComponent {
     numero_baja: 0,
     numero_media: 0,
     numero_alta: 0,
-    numero_critica: 0
+    numero_critica: 0,
+    estado_escaneo: 'pendiente',
+    detalle_escaneo: null,
+    fecha_escaneo: null
+  };
+
+  mensajesEstado: { [estado: string]: string } = {
+    pendiente: 'La imagen todavía no se ha escaneado.',
+    escaneando: 'Escaneo en curso...',
+    error: 'El último escaneo falló; se reintentará en unos minutos.',
+    no_soportado: 'Los paquetes del sistema operativo no se han analizado.'
   };
   pageSize = 5;
   totalPages = 0;

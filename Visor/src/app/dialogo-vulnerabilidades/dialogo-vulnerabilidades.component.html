@@ -1,6 +1,10 @@
 <mat-dialog-content class="dialog-content">
   <h2 mat-dialog-title class="text-color">Vulnerabilidades de: {{ data.imagen }}</h2>
-    <h3 class="text-color subtitulo">Total: {{imagen.numero_desconocida + imagen.numero_baja + imagen.numero_media + imagen.numero_alta + imagen.numero_critica}} (Desconocida: {{imagen.numero_desconocida}}, Baja: {{imagen.numero_baja}}, Media: {{imagen.numero_media}}, Alta: {{imagen.numero_alta}}, Crítica: {{imagen.numero_critica}})</h3>
+    <p *ngIf="mensajesEstado[imagen.estado_escaneo]" class="aviso-escaneo">
+      {{ mensajesEstado[imagen.estado_escaneo] }}
+      <span *ngIf="imagen.detalle_escaneo">({{ imagen.detalle_escaneo }})</span>
+    </p>
+    <h3 *ngIf="imagen.numero_baja !== null" class="text-color subtitulo">Total: {{imagen.numero_desconocida + imagen.numero_baja + imagen.numero_media + imagen.numero_alta + imagen.numero_critica}} (Desconocida: {{imagen.numero_desconocida}}, Baja: {{imagen.numero_baja}}, Media: {{imagen.numero_media}}, Alta: {{imagen.numero_alta}}, Crítica: {{imagen.numero_critica}})</h3>
     <table mat-table [dataSource]="dataSource">
 
       <ng-container matColumnDef="vulnerabilidad">

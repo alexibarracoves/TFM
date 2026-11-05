@@ -100,7 +100,8 @@ app.get('/imagenes/:id', async (req, res) => {
     const { id } = req.params;
 
     const imageQuery = await pool.query(`
-      SELECT id, nombre, hash, numero_desconocida, numero_baja, numero_media, numero_alta, numero_critica
+      SELECT id, nombre, hash, numero_desconocida, numero_baja, numero_media, numero_alta, numero_critica,
+             estado_escaneo, detalle_escaneo, fecha_escaneo
       FROM imagenes
       WHERE id = $1
     `, [id]);

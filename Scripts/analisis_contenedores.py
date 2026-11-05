@@ -4,9 +4,17 @@ import subprocess
 import time
 import docker
 import motor
-from utils import get_db, getContenedores, getImagenes, obtenerIdImagen
+from utils import get_db, getContenedores, getImagenes, obtenerIdImagen, imagenesPorEscanear
 
 contador = 0
+escaneo = None
+
+def lanzarEscaneo(*argumentos):
+    global escaneo
+    if escaneo and escaneo.poll() is None:
+        return False
+    escaneo = subprocess.Popen(["python3", "/app/Scripts/analisis_imagenes.py", *argumentos])
+    return True
 
 def inspect(id):
     try:
@@ -42,24 +50,13 @@ def comprobarModoRoot():
 
 def comprobarImagenes(contenedores):
     global contador
-    conn = get_db()
     try:
-        cursor = conn.cursor()
-        nueva = False
-        for nombre, hash in getImagenes(contenedores).items():
-            cursor.execute("SELECT id FROM imagenes WHERE nombre = ? OR hash = ?", (nombre, hash))
-            if not cursor.fetchone():
-                nueva = True
-                break
-
-        if nueva:
-            print("Imagenes nuevas detectadas, ejecutando análisis...")
-            subprocess.Popen(["python3", "/app/Scripts/analisis_imagenes.py"])
+        pendientes = imagenesPorEscanear(getImagenes(contenedores))
+        if pendientes and lanzarEscaneo():
+            print(f"Imágenes pendientes de escanear: {', '.join(pendientes)}")
             contador = 0
     except sqlite3.Error as e:
-        print(f"Error de base de datos al actualizar imágenes: {e}")
-    finally:
-        conn.close()
+        print(f"Error de base de datos al comprobar imágenes: {e}")
 
 def insertarInfo(contenedores):
     conn = None
@@ -98,9 +95,9 @@ def analizarContenedores():
         if contenedores:
             comprobarImagenes(contenedores)
             insertarInfo(contenedores)
-        if contador == 120:
+        # Reescaneo completo cada ~10 minutos para detectar vulnerabilidades nuevas en imágenes ya conocidas
+        if contador >= 120 and lanzarEscaneo("--todas"):
             contador = 0
-            subprocess.Popen(["python3", "/app/Scripts/analisis_imagenes.py"])
         time.sleep(5)
 
 if __name__ == "__main__":

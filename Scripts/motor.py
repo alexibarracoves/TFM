@@ -90,4 +90,7 @@ def inspeccionar(id):
 
 def logs(nombre, num_lineas):
     salida = cliente.api.logs(nombre, timestamps=True, tail=num_lineas)
-    return salida.decode("utf-8", errors="replace").splitlines()
+    # Solo se separa por \n: algunas aplicaciones (p. ej. SQL Server) escriben \r dentro de cada línea
+    # y splitlines() las partiría, dejando el mensaje sin la marca de tiempo del motor
+    texto = salida.decode("utf-8", errors="replace").replace("\r", "")
+    return [linea for linea in texto.split("\n") if linea]

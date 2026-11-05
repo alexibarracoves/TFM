@@ -6,7 +6,10 @@ CREATE TABLE IF NOT EXISTS imagenes (
     numero_baja INTEGER,
     numero_media INTEGER,
     numero_alta INTEGER,
-    numero_critica INTEGER
+    numero_critica INTEGER,
+    estado_escaneo TEXT NOT NULL DEFAULT 'pendiente',
+    detalle_escaneo TEXT,
+    fecha_escaneo TEXT
 );
 
 CREATE TABLE IF NOT EXISTS contenedores (
